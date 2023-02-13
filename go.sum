@@ -17,6 +17,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/reconquest/cog v0.0.0-20210820140837-c5c4e8f49c65 h1:IiAAeijD0sU3C6OO9vy/0WUUfRabZ1aH7hijCBteJC4=
 github.com/reconquest/cog v0.0.0-20210820140837-c5c4e8f49c65/go.mod h1:iin2k2yhKESAy14B2fXK8gpf1nofl7dTXH5U+VdIlss=
+github.com/reconquest/executil-go v0.0.0-20181110204642-1f5c2d67813f h1:z1ngdCBGkIqhguiSVsn7VI/PLzGnC6r1JClA4iv+5hA=
+github.com/reconquest/executil-go v0.0.0-20181110204642-1f5c2d67813f/go.mod h1:63UJzHtKBhZ2qo6JzQFn8wOG8bNXextZyVOjlXUE+9I=
 github.com/reconquest/karma-go v0.0.0-20200928103525-22da92476de6/go.mod h1:yuQiKpTdmXSX7E+h+3dD4jx09P/gHc67mRxN3eFLt7o=
 github.com/reconquest/karma-go v0.0.0-20220904173930-21741aa386a6 h1:wSI9nn6ZDtuA4Coi6oWmhBqSHGLUK2XRhn9x/4QCCMY=
 github.com/reconquest/karma-go v0.0.0-20220904173930-21741aa386a6/go.mod h1:qMQ8twYxBpCJ4IYrAnMDBtdNMj0ZTH+kcu94ZIY6vDU=
@@ -31,6 +33,9 @@ github.com/zazab/zhash v0.0.0-20210630080733-6e809466f8d3 h1:BhVaeQJc3xalHGONn21
 github.com/zazab/zhash v0.0.0-20210630080733-6e809466f8d3/go.mod h1:NtepZ8TEXErPsmQDMUoN72f8aIy4+xNinSJ3f1giess=
 golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90 h1:Y/gsMcFOcR+6S6f3YeMKl5g+dZMEWqcz5Czj/GWYbkM=
 golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90/go.mod h1:IxCIyHEi3zRg3s0A5j5BB6A9Jmi73HwBIUl50j+osU4=
+golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f h1:v4INt8xihDGvnrfjMDVXGxw9wrfxYyCjk0KbXjhR55s=
+golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 h1:v+OssWQX+hTHEmOBgwxdZxK4zHq3yOs8F9J7mk0PY8E=
 golang.org/x/text v0.5.0 h1:OLmvp0KP+FVG99Ct/qFiL/Fhk4zp4QQnZ7b2U+5piUM=
 golang.org/x/text v0.5.0/go.mod h1:mrYo+phRRbMaCq/xk9113O4dZlRixOauAjOtrjsXDZ8=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=

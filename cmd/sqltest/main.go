@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/docopt/docopt-go"
 	"github.com/jackc/pgx/v5"
+	"github.com/reconquest/executil-go"
 	"github.com/reconquest/karma-go"
 	"github.com/reconquest/pkg/log"
 )
@@ -28,7 +31,8 @@ Options:
   -d --db <uri>         PostgreSQL connection URI [default: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable]
   --setup <command>     Command to run before test.
   --teardown <command>  Command to run after test.
-  --no-rm 			    Do not remove output files.
+  --no-rm               Do not remove output files.
+  --debug               Enable debug logging.
   -h --help             Show this screen.
   --version             Show version.
 `
@@ -41,6 +45,7 @@ type Arguments struct {
 	Setup       string `docopt:"--setup"`
 	Teardown    string `docopt:"--teardown"`
 	DoNotRemove bool   `docopt:"--no-rm"`
+	Debug       bool   `docopt:"--debug"`
 }
 
 type Tester struct {
@@ -71,6 +76,10 @@ func main() {
 	err = doc.Bind(&args)
 	if err != nil {
 		panic(err)
+	}
+
+	if args.Debug {
+		log.SetLevel(log.LevelDebug)
 	}
 
 	defer os.Stdout.Sync()
@@ -239,41 +248,43 @@ func (tester *Tester) runTeardown() error {
 func (tester *Tester) runExternal(command string) error {
 	cmd := exec.Command("sh", "-c", command)
 
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-
 	cmd.Env = append(
 		os.Environ(),
 		"SQLTEST_DATABASE_NAME="+tester.testcase.dbConfig.Database,
-		"SQLTEST_DATABASE_URI="+tester.testcase.dbConfig.ConnString(),
+		"SQLTEST_DATABASE_URI="+updateDatabaseURI(
+			tester.testcase.dbConfig.ConnString(),
+			tester.testcase.dbConfig.Database,
+		),
 		"SQLTEST_TESTCASE_NAME="+tester.testcase.Name,
 		"SQLTEST_TESTCASE_FILENAME="+tester.testcase.Filename,
 		"SQLTEST_TESTCASE_DIR_IN="+tester.dirIn,
 		"SQLTEST_TESTCASE_DIR_OUT="+tester.dirExpected,
 	)
 
-	err := cmd.Run()
+	_, _, err := executil.Run(cmd)
 	if err != nil {
-		return karma.Format(
-			err,
-			"run external command: %s",
-			command,
-		)
+		return karma.Format(err, "run external command")
 	}
 
 	return nil
 }
 
 func (tester *Tester) exec() error {
-	cmd := exec.Command(
+	args := []string{
 		"psql",
 		"-v",
 		"ON_ERROR_STOP=1",
 		"-f",
 		filepath.Join(tester.dirIn, tester.testcase.Filename),
-		tester.testcase.dbConfig.ConnString(),
-	)
+		updateDatabaseURI(
+			tester.testcase.dbConfig.ConnString(),
+			tester.testcase.dbConfig.Database,
+		),
+	}
+
+	log.Debugf(nil, "exec: %s", args)
+
+	cmd := exec.Command(args[0], args[1:]...)
 
 	actual := filepath.Join(tester.dirOut, tester.testcase.Filename)
 
@@ -284,8 +295,18 @@ func (tester *Tester) exec() error {
 
 	defer out.Close()
 
-	cmd.Stdout = out
-	cmd.Stderr = out
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return karma.Format(err, "get stdout pipe")
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return karma.Format(err, "get stderr pipe")
+	}
+
+	go io.Copy(os.Stderr, stderr)
+	go io.Copy(out, stdout)
 
 	err = cmd.Run()
 	if err != nil {
@@ -343,4 +364,15 @@ func ensureFileExists(filename string) error {
 	}
 
 	return nil
+}
+
+func updateDatabaseURI(originalURI string, dbname string) string {
+	uri, err := url.Parse(originalURI)
+	if err != nil {
+		panic(err)
+	}
+
+	uri.Path = "/" + dbname
+
+	return uri.String()
 }

@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815
 	github.com/jackc/pgx/v5 v5.2.0
+	github.com/reconquest/executil-go v0.0.0-20181110204642-1f5c2d67813f
 	github.com/reconquest/karma-go v0.0.0-20220904173930-21741aa386a6
 	github.com/reconquest/pkg v1.3.0
 )
@@ -16,5 +17,6 @@ require (
 	github.com/reconquest/cog v0.0.0-20210820140837-c5c4e8f49c65 // indirect
 	github.com/zazab/zhash v0.0.0-20210630080733-6e809466f8d3 // indirect
 	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90 // indirect
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
 	golang.org/x/text v0.5.0 // indirect
 )
