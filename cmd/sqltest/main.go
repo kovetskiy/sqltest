@@ -147,13 +147,17 @@ func main() {
 	}
 
 	if failed > 0 {
-		log.Fatalf(
-			nil,
-			"FAIL %d/%d (%.2f%%) testcases (%v)",
-			failed,
-			len(testcases),
-			float64(failed)/float64(len(testcases))*100,
-			time.Since(allStartedAt),
+		log.Fatal(
+			karma.
+				Describe("directory", outputDirectory).
+				Format(
+					nil,
+					"FAIL %d/%d (%.2f%%) testcases (%v)",
+					failed,
+					len(testcases),
+					float64(failed)/float64(len(testcases))*100,
+					time.Since(allStartedAt),
+				),
 		)
 	}
 
