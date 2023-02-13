@@ -85,6 +85,17 @@ sqltest ./testdata/testcases ./testdata/expected -d 'postgres://a:b@host/dev?ssl
 2023-02-13 12:01:35.989 INFO  PASS 1 testcases (772.933208ms)
 ```
 
+## Environment variables:
+
+Name                        | Description
+---                         | ---
+`SQLTEST_DATABASE_NAME`     | The name of the database used for the test
+`SQLTEST_DATABASE_URI`      | The connection string used for the test
+`SQLTEST_TESTCASE_NAME`     | The name of the test
+`SQLTEST_TESTCASE_FILENAME` | The filename of the test
+`SQLTEST_TESTCASE_DIR_IN`   | The directory where the test is located
+`SQLTEST_TESTCASE_DIR_OUT`  | The directory where the expected output is located
+
 ## License
 
 MIT
