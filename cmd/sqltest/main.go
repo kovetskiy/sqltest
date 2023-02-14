@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -32,6 +33,8 @@ Options:
   --setup <command>     Command to run before test.
   --teardown <command>  Command to run after test.
   --no-rm               Do not remove output files.
+  --approve <filter>    Approve results of testcases matching filter].
+                         Example: --approve . to approve all testcases.
   --debug               Enable debug logging.
   -h --help             Show this screen.
   --version             Show version.
@@ -39,25 +42,24 @@ Options:
 )
 
 type Arguments struct {
-	DirIn       string `docopt:"<in>"`
-	DirExpected string `docopt:"<expected>"`
-	DatabaseURI string `docopt:"--db"`
-	Setup       string `docopt:"--setup"`
-	Teardown    string `docopt:"--teardown"`
-	DoNotRemove bool   `docopt:"--no-rm"`
-	Debug       bool   `docopt:"--debug"`
+	ValueDirIn       string `docopt:"<in>"`
+	ValueDirExpected string `docopt:"<expected>"`
+	ValueDatabaseURI string `docopt:"--db"`
+	ValueSetup       string `docopt:"--setup"`
+	ValueTeardown    string `docopt:"--teardown"`
+
+	FlagDoNotRemove bool `docopt:"--no-rm"`
+	FlagDebug       bool `docopt:"--debug"`
+
+	ValueApprove string `docopt:"--approve"`
 }
 
 type Tester struct {
+	args     Arguments
 	db       *pgx.Conn
 	dbConfig *pgx.ConnConfig
 
-	dirIn       string
-	dirExpected string
-	dirOut      string
-
-	setup    string
-	teardown string
+	dirOut string
 
 	testcase struct {
 		Testcase
@@ -78,13 +80,13 @@ func main() {
 		panic(err)
 	}
 
-	if args.Debug {
+	if args.FlagDebug {
 		log.SetLevel(log.LevelDebug)
 	}
 
 	defer os.Stdout.Sync()
 
-	dbConfig, err := pgx.ParseConfig(args.DatabaseURI)
+	dbConfig, err := pgx.ParseConfig(args.ValueDatabaseURI)
 	if err != nil {
 		panic(err)
 	}
@@ -96,7 +98,7 @@ func main() {
 
 	defer db.Close(context.Background())
 
-	testcases, err := LoadTestcases(args.DirIn, args.DirExpected)
+	testcases, err := LoadTestcases(args.ValueDirIn, args.ValueDirExpected)
 	if err != nil {
 		panic(err)
 	}
@@ -121,14 +123,10 @@ func main() {
 	failed := 0
 	for _, testcase := range testcases {
 		tester := Tester{
-			db:          db,
-			dbConfig:    dbConfig,
-			dirIn:       args.DirIn,
-			dirExpected: args.DirExpected,
-			dirOut:      outputDirectory,
-
-			setup:    args.Setup,
-			teardown: args.Teardown,
+			args:     args,
+			db:       db,
+			dbConfig: dbConfig,
+			dirOut:   outputDirectory,
 		}
 
 		startedAt := time.Now()
@@ -147,17 +145,13 @@ func main() {
 	}
 
 	if failed > 0 {
-		log.Fatal(
-			karma.
-				Describe("directory", outputDirectory).
-				Format(
-					nil,
-					"FAIL %d/%d (%.2f%%) testcases (%v)",
-					failed,
-					len(testcases),
-					float64(failed)/float64(len(testcases))*100,
-					time.Since(allStartedAt),
-				),
+		log.Fatalf(
+			nil,
+			"FAIL %d/%d (%.2f%%) testcases (%v)",
+			failed,
+			len(testcases),
+			float64(failed)/float64(len(testcases))*100,
+			time.Since(allStartedAt),
 		)
 	}
 
@@ -222,7 +216,7 @@ func (tester *Tester) Run(testcase Testcase) error {
 
 	err = tester.exec()
 	if err != nil {
-		return karma.Format(err, "exec testcase")
+		return err
 	}
 
 	err = tester.runTeardown()
@@ -234,19 +228,19 @@ func (tester *Tester) Run(testcase Testcase) error {
 }
 
 func (tester *Tester) runSetup() error {
-	if tester.setup == "" {
+	if tester.args.ValueSetup == "" {
 		return nil
 	}
 
-	return tester.runExternal(tester.setup)
+	return tester.runExternal(tester.args.ValueSetup)
 }
 
 func (tester *Tester) runTeardown() error {
-	if tester.teardown == "" {
+	if tester.args.ValueTeardown == "" {
 		return nil
 	}
 
-	return tester.runExternal(tester.teardown)
+	return tester.runExternal(tester.args.ValueTeardown)
 }
 
 func (tester *Tester) runExternal(command string) error {
@@ -254,15 +248,15 @@ func (tester *Tester) runExternal(command string) error {
 
 	cmd.Env = append(
 		os.Environ(),
-		"SQLTEST_DATABASE_NAME="+tester.testcase.dbConfig.Database,
-		"SQLTEST_DATABASE_URI="+updateDatabaseURI(
+		"SQLTEST_TESTCASE_DATABASE_NAME="+tester.testcase.dbConfig.Database,
+		"SQLTEST_TESTCASE_DATABASE_URI="+updateDatabaseURI(
 			tester.testcase.dbConfig.ConnString(),
 			tester.testcase.dbConfig.Database,
 		),
 		"SQLTEST_TESTCASE_NAME="+tester.testcase.Name,
 		"SQLTEST_TESTCASE_FILENAME="+tester.testcase.Filename,
-		"SQLTEST_TESTCASE_DIR_IN="+tester.dirIn,
-		"SQLTEST_TESTCASE_DIR_OUT="+tester.dirExpected,
+		"SQLTEST_TESTCASE_DIR_IN="+tester.args.ValueDirIn,
+		"SQLTEST_TESTCASE_DIR_EXPECTED="+tester.args.ValueDirExpected,
 	)
 
 	_, _, err := executil.Run(cmd)
@@ -279,7 +273,7 @@ func (tester *Tester) exec() error {
 		"-v",
 		"ON_ERROR_STOP=1",
 		"-f",
-		filepath.Join(tester.dirIn, tester.testcase.Filename),
+		filepath.Join(tester.args.ValueDirIn, tester.testcase.Filename),
 		updateDatabaseURI(
 			tester.testcase.dbConfig.ConnString(),
 			tester.testcase.dbConfig.Database,
@@ -322,38 +316,60 @@ func (tester *Tester) exec() error {
 		return karma.Format(err, "sync actual file")
 	}
 
-	expected := filepath.Join(tester.dirExpected, tester.testcase.Filename)
+	expected := filepath.Join(tester.args.ValueDirExpected, tester.testcase.Filename)
 
 	err = ensureFileExists(expected)
 	if err != nil {
 		return karma.Format(err, "ensure expected file exists")
 	}
 
-	err = runDiff(expected, actual)
+	if tester.approved() {
+		log.Infof(nil, "approve: %s", tester.testcase.Name)
+
+		err = copyFile(actual, expected)
+		if err != nil {
+			return karma.Format(err, "copy actual to expected")
+		}
+
+		return nil
+	}
+
+	diff, err := runDiff(expected, actual)
 	if err != nil {
 		return err
+	}
+
+	if len(diff) > 0 {
+		return karma.
+			Describe("diff", "\n"+string(diff)).
+			Format(nil, "diff is not empty")
 	}
 
 	return nil
 }
 
-func runDiff(expected string, actual string) error {
-	cmd := exec.Command("diff", "-u", expected, actual)
-
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Run()
-	if err != nil {
-		return karma.Format(
-			err,
-			"diff failed: %s != %s",
-			expected,
-			actual,
-		)
+func (tester *Tester) approved() bool {
+	if tester.args.ValueApprove == "" {
+		return false
 	}
 
-	return nil
+	pattern := regexp.MustCompile(tester.args.ValueApprove)
+
+	return pattern.MatchString(tester.testcase.Name)
+}
+
+func runDiff(expected string, actual string) ([]byte, error) {
+	cmd := exec.Command("diff", "-u", expected, actual)
+	stdout, _, err := executil.Run(cmd)
+	if err != nil {
+		if len(stdout) == 0 {
+			return nil, karma.Format(err, "diff command failed (no stdout)")
+		}
+
+		return stdout, nil
+	}
+
+	return nil, nil
 }
 
 func ensureFileExists(filename string) error {
@@ -379,4 +395,30 @@ func updateDatabaseURI(originalURI string, dbname string) string {
 	uri.Path = "/" + dbname
 
 	return uri.String()
+}
+
+func copyFile(src string, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return err
+	}
+
+	err = out.Sync()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

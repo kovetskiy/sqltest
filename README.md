@@ -72,7 +72,10 @@ Options:
   -d --db <uri>         PostgreSQL connection URI [default: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable]
   --setup <command>     Command to run before test.
   --teardown <command>  Command to run after test.
-  --no-rm 			    Do not remove output files.
+  --no-rm               Do not remove output files.
+  --approve <filter>    Approve results of testcases matching filter].
+                         Example: --approve . to approve all testcases.
+  --debug               Enable debug logging.
   -h --help             Show this screen.
   --version             Show version.
 ```
@@ -85,7 +88,18 @@ sqltest ./testdata/testcases ./testdata/expected -d 'postgres://a:b@host/dev?ssl
 2023-02-13 12:01:35.989 INFO  PASS 1 testcases (772.933208ms)
 ```
 
+If you see that your test failed, you can approve the result by running:
+
+```
+sqltest ./testdata/testcases ./testdata/expected -d 'postgres://a:b@host/dev?sslmode=disable' --approve .
+```
+
+The `--approve` flag will copy the output of the test that matches the given pattern (`.`) to the expected directory.
+
 ## Environment variables:
+
+Environment variables are supplied to --setup and --teardown commands. This is useful for supplying
+database schema.
 
 Name                        | Description
 ---                         | ---
