@@ -35,6 +35,7 @@ Options:
   --no-rm               Do not remove output files.
   --approve <filter>    Approve results of testcases matching filter].
                          Example: --approve . to approve all testcases.
+  -r --run <filter>     Run only testcases matching filter. [default: .]
   --debug               Enable debug logging.
   -h --help             Show this screen.
   --version             Show version.
@@ -52,6 +53,7 @@ type Arguments struct {
 	FlagDebug       bool `docopt:"--debug"`
 
 	ValueApprove string `docopt:"--approve"`
+	ValueRun     string `docopt:"--run"`
 }
 
 type Tester struct {
@@ -102,6 +104,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	testcases = filter(testcases, func(testcase Testcase) bool {
+		return match(testcase.Name, args.ValueRun)
+	})
 
 	outputDirectory, err := os.MkdirTemp(
 		os.TempDir(),
@@ -421,4 +427,22 @@ func copyFile(src string, dst string) error {
 	}
 
 	return nil
+}
+
+func filter[T comparable](values []T, predicate func(T) bool) []T {
+	result := make([]T, 0)
+
+	for _, value := range values {
+		if predicate(value) {
+			result = append(result, value)
+		}
+	}
+
+	return result
+}
+
+func match(value string, pattern string) bool {
+	re := regexp.MustCompile(pattern)
+
+	return re.MatchString(value)
 }
